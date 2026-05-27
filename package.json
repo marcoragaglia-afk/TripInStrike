@@ -1,0 +1,20 @@
+{
+  "name": "sciopero-treni-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Orchestrazione monorepo Sciopero Treni",
+  "scripts": {
+    "setup": "npm run setup:backend && npm run setup:frontend",
+    "setup:backend": "cd backend && npm install",
+    "setup:frontend": "cd frontend && npm install",
+    "build": "npm run build:db && npm run build:backend && npm run build:frontend",
+    "build:db": "cd etl && python build_db.py --skip-timetable",
+    "build:db:full": "cd etl && python build_db.py",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "dev": "start /B cmd /C \"cd backend && node dist/server.js\" && cd frontend && npm run dev",
+    "start:backend": "cd backend && node dist/server.js",
+    "start:frontend": "cd frontend && npm start",
+    "typecheck": "cd backend && npm run typecheck && cd ../frontend && npm run typecheck"
+  }
+}

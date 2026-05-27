@@ -1,0 +1,60 @@
+# === Dipendenze Node (ricostruite da npm install) ===
+node_modules/
+.pnp
+.pnp.js
+
+# === Build output ===
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# === Logs ===
+*.log
+npm-debug.log*
+yarn-debug.log*
+dev.log
+
+# === Env / secrets ===
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+*.py[cod]
+.venv/
+venv/
+
+# === ETL — dump e output temporanei rigenerabili ===
+etl/ancona_pdf_dump.txt
+etl/ancona_arr_dump.txt
+etl/*.output
+
+# === DB sorgente (rigenerabile da build_db.py)
+# NB: NON escludere frontend/public/sciopero.db — quello DEVE essere committato per Vercel
+db/sciopero.db
+db/sciopero.db-shm
+db/sciopero.db-wal
+
+# === PDF sorgenti (proprietari Trenitalia, non distribuire) ===
+*.pdf
+pdfs/
+
+# === Vercel ===
+.vercel
+
+# === IDE / OS ===
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+next-env.d.ts
