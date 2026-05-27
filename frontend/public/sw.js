@@ -1,11 +1,12 @@
 // Service Worker per TripInStrike PWA — client-only
-const CACHE_NAME = 'tripinstrike-v2';
+const CACHE_NAME = 'tripinstrike-v3';
 
-// Asset da pre-caricare (include il DB SQLite per uso offline)
+// Asset da pre-caricare (include il DB SQLite e il WASM di sql.js per uso offline)
 const PRECACHE_URLS = [
   '/',
   '/manifest.json',
   '/sciopero.db',
+  '/sql-wasm.wasm',
 ];
 
 self.addEventListener('install', (event) => {

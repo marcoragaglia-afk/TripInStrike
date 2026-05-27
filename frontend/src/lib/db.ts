@@ -13,10 +13,10 @@ export async function initDb(): Promise<Database> {
   if (_loading) return _loading;
 
   _loading = (async () => {
-    // sql.js richiede di scaricare il file .wasm separato
+    // sql.js richiede di scaricare il file .wasm separato.
+    // Lo serviamo localmente da /sql-wasm.wasm (cached dal SW per uso offline).
     const SQL = await initSqlJs({
-      // Carica il WASM dal CDN (più affidabile su Vercel rispetto a bundling)
-      locateFile: (file: string) => `https://sql.js.org/dist/${file}`,
+      locateFile: (file: string) => `/${file}`,
     });
 
     // Scarica il DB precostruito (~2MB, cached dal SW dopo la prima volta)

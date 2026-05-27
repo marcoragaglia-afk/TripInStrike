@@ -35,7 +35,7 @@ export default function Home() {
             <span>Modalità Sciopero Ferroviario</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">
-            Sciopero Treni
+            TripInStrike
           </h1>
           <p className="text-slate-400 mt-2 text-base">
             Itinerari garantiti in caso di sciopero – Dati ufficiali Trenitalia
@@ -66,7 +66,7 @@ export default function Home() {
             <p className="font-bold">Errore nella ricerca</p>
             <p className="text-sm mt-1 text-red-400">{state.message}</p>
             <p className="text-xs mt-3 text-red-500/70">
-              Verificare che il backend sia in esecuzione (porta 3001) e che le stazioni siano scritte correttamente.
+              Verifica che i nomi delle stazioni siano scritti correttamente. Se il problema persiste prova a ricaricare la pagina.
             </p>
           </div>
         )}
