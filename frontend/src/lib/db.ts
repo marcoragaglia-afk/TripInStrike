@@ -13,17 +13,25 @@ export async function initDb(): Promise<Database> {
   if (_loading) return _loading;
 
   _loading = (async () => {
-    // sql.js richiede di scaricare il file .wasm separato.
-    // Lo serviamo localmente da /sql-wasm.wasm (cached dal SW per uso offline).
+    // Strategia robusta: scarichiamo NOI il .wasm e lo passiamo a sql.js
+    // tramite wasmBinary. Questo bypassa il loader interno di Emscripten che
+    // può fallire con certi MIME type / CDN / service workers.
+    const [wasmRes, dbRes] = await Promise.all([
+      fetch('/sql-wasm.wasm'),
+      fetch('/sciopero.db'),
+    ]);
+    if (!wasmRes.ok) throw new Error(`WASM non disponibile: HTTP ${wasmRes.status}`);
+    if (!dbRes.ok) throw new Error(`DB non disponibile: HTTP ${dbRes.status}`);
+
+    const wasmBinary = await wasmRes.arrayBuffer();
+    const dbBytes = new Uint8Array(await dbRes.arrayBuffer());
+
     const SQL = await initSqlJs({
-      locateFile: (file: string) => `/${file}`,
+      wasmBinary,                                    // passa i bytes direttamente
+      locateFile: (file: string) => `/${file}`,      // fallback se richiede altro
     });
 
-    // Scarica il DB precostruito (~2MB, cached dal SW dopo la prima volta)
-    const res = await fetch('/sciopero.db');
-    if (!res.ok) throw new Error(`DB non disponibile: HTTP ${res.status}`);
-    const buf = new Uint8Array(await res.arrayBuffer());
-    _db = new SQL.Database(buf);
+    _db = new SQL.Database(dbBytes);
     return _db;
   })();
 
