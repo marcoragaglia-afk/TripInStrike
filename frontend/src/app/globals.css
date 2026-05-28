@@ -35,26 +35,22 @@ body {
   font-family: 'Inter', system-ui, sans-serif;
 }
 
-/* Su mobile (touch), background-attachment: fixed causa scatti.
-   Usiamo scroll per fluidità su telefoni. */
+/* Su mobile: background-attachment: fixed causa scatti su iOS/Android.
+   Usiamo scroll, riduciamo overlay per far vedere meglio l'immagine,
+   e ingrandiamo l'immagine per riempire più area su schermi verticali. */
 @media (max-width: 768px) {
   body {
     background:
       linear-gradient(
         180deg,
-        rgba(10, 10, 30, 0.88) 0%,
-        rgba(10, 10, 30, 0.65) 30%,
-        rgba(10, 10, 30, 0.75) 70%,
-        rgba(10, 10, 30, 0.95) 100%
-      ),
-      linear-gradient(
-        160deg,
         rgba(10, 10, 30, 0.55) 0%,
-        rgba(15, 52, 96, 0.55) 100%
+        rgba(10, 10, 30, 0.35) 30%,
+        rgba(10, 10, 30, 0.55) 70%,
+        rgba(10, 10, 30, 0.90) 100%
       ),
-      url('/bg.jpg') center top / cover no-repeat;
-    background-color: rgb(var(--background-start-rgb));
+      url('/bg.jpg') right center / cover no-repeat;
     background-attachment: scroll;
+    background-color: rgb(var(--background-start-rgb));
   }
 }
 
