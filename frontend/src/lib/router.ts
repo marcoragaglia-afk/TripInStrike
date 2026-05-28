@@ -345,9 +345,29 @@ export function findItineraries(
         changePoints.push({ station: trainA.destination, arrTime: finalArr });
       }
 
+      // Se trainA passa attraverso la destinazione 'to', individua dove.
+      // Tutti i changePoint DOPO 'to' vanno scartati: sarebbe assurdo
+      // andare oltre la destinazione e poi tornare indietro con un altro treno.
+      const toStopIdxA = stopsA.findIndex(s => stationMatch(s.station, to));
+      const toIsDestA = stationMatch(trainA.destination, to);
+
       for (const cp of changePoints) {
         const arrForCalc = cp.arrTime;
         const changeStation = cp.station;
+
+        // Skip se trainA passa per 'to' PRIMA del cambio (combinazione redundante)
+        if (toStopIdxA !== -1 || toIsDestA) {
+          const cpStopIdxA = stopsA.findIndex(s => stationMatch(s.station, cp.station));
+          // Effective "to" position: indice della fermata 'to' oppure fine (=destination)
+          const toPosA = toStopIdxA !== -1 ? toStopIdxA : stopsA.length;
+          // Posizione effettiva di cp: la sua sequence o stopsA.length se è destination
+          const cpPosA = cpStopIdxA !== -1 ? cpStopIdxA : stopsA.length;
+          // Se 'to' precede cp sul percorso di trainA, salta
+          if (toPosA < cpPosA) continue;
+          // Anche se to e cp coincidono: il viaggio è "diretto" gestito in Fase 1
+          if (toPosA === cpPosA) continue;
+        }
+
         const travelA = timeDiff(boardATime, arrForCalc);
         if (travelA > MAX_JOURNEY_MINS) continue;
 
