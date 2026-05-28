@@ -310,23 +310,25 @@ export function findItineraries(
         boardAStation = stop.station;
       }
 
-      // Per ogni possibile stazione di cambio: la destinazione di trainA OPPURE
-      // una sua fermata intermedia DOPO boardAStation
+      // Per ogni possibile stazione di cambio: una fermata intermedia di trainA
+      // (in ordine cronologico) OPPURE la destinazione finale.
+      // NB: mettiamo PRIMA le intermedie e POI la destinazione perché i cambi
+      // più vicini all'origine sono preferibili (meno tempo "sprecato" sul treno A).
       type ChangePoint = { station: string; arrTime: string };
       const changePoints: ChangePoint[] = [];
-      // Destinazione finale di trainA (solo se abbiamo tempo arrivo)
-      const finalArr = trainA.arr_time || lookupArrTime(stopsA, trainA.destination);
-      if (finalArr) {
-        changePoints.push({ station: trainA.destination, arrTime: finalArr });
-      }
-      // Fermate intermedie DOPO il punto di salita
       const boardIdxA = stopsA.findIndex(s => stationMatch(s.station, boardAStation));
+      // Fermate intermedie DOPO il punto di salita (ordinate per sequenza = cronologiche)
       for (let i = boardIdxA + 1; i < stopsA.length; i++) {
         const s = stopsA[i];
         const arrT = s.arrival || s.departure;
         if (arrT && !stationMatch(s.station, boardAStation) && !stationMatch(s.station, from)) {
           changePoints.push({ station: s.station, arrTime: arrT });
         }
+      }
+      // Destinazione finale come ULTIMO punto di cambio possibile
+      const finalArr = trainA.arr_time || lookupArrTime(stopsA, trainA.destination);
+      if (finalArr && !changePoints.some(c => stationMatch(c.station, trainA.destination))) {
+        changePoints.push({ station: trainA.destination, arrTime: finalArr });
       }
 
       for (const cp of changePoints) {
@@ -414,17 +416,54 @@ export function findItineraries(
   }
 
   // ── Deduplication e ordinamento ───────────────────────────────────────────
-  const seen = new Set<string>();
-  const unique = results.filter(r => {
-    const key = r.legs.map(l => `${l.trainNumber}|${l.depTime}`).join('>');
-    if (seen.has(key)) return false;
-    seen.add(key);
+  // 1) Dedup esatto: stesso treno A + treno B + stesso punto di cambio
+  const seenExact = new Set<string>();
+  let unique = results.filter(r => {
+    const key = r.legs.map(l => `${l.trainNumber}|${l.depTime}|${l.boardAt}`).join('>');
+    if (seenExact.has(key)) return false;
+    seenExact.add(key);
     return true;
   });
 
+  // 2) Dedup "intelligente" per cambi: se abbiamo lo STESSO treno A con stesso
+  //    orario di partenza E lo STESSO treno B (con orari diversi al cambio),
+  //    teniamo solo quello con il cambio CRONOLOGICAMENTE PIÙ ANTICIPATO sul
+  //    percorso di trainA — è il cambio più vicino all'origine, quindi più logico.
+  //    NB: tieni conto che lo stesso (A,B) può apparire con cambio a Bologna E a Milano:
+  //    Bologna arriva prima -> meno tempo sprecato su A -> preferito.
+  const bestPerPair = new Map<string, Itinerary>();
+  for (const it of unique) {
+    if (it.changes !== 1) {
+      // Diretti o multi-cambio: non dedupare
+      const k = `${it.legs[0].trainNumber}|${it.legs[0].depTime}|direct|${it.legs.length}`;
+      if (!bestPerPair.has(k)) bestPerPair.set(k, it);
+      continue;
+    }
+    const a = it.legs[0];
+    const b = it.legs[1];
+    // Chiave per la coppia (treno A + dep A) + (treno B + alight B)
+    const pairKey = `${a.trainNumber}|${a.depTime}>${b.trainNumber}|${b.alightAt}`;
+    const existing = bestPerPair.get(pairKey);
+    if (!existing) {
+      bestPerPair.set(pairKey, it);
+    } else {
+      // Tieni quello con cambio PRIMA (boardBTime minore = boardiamo trainB prima)
+      const existingChangeTime = parseTime(existing.legs[1].depTime);
+      const newChangeTime = parseTime(it.legs[1].depTime);
+      if (newChangeTime < existingChangeTime) {
+        bestPerPair.set(pairKey, it);
+      }
+    }
+  }
+  unique = Array.from(bestPerPair.values());
+
+  // 3) Ordinamento finale: prima per numero di cambi, poi per orario partenza,
+  //    poi per durata totale (a parità, percorso più corto vince).
   unique.sort((a, b) => {
     if (a.changes !== b.changes) return a.changes - b.changes;
-    return parseTime(a.legs[0].depTime) - parseTime(b.legs[0].depTime);
+    const depDiff = parseTime(a.legs[0].depTime) - parseTime(b.legs[0].depTime);
+    if (depDiff !== 0) return depDiff;
+    return a.totalTime - b.totalTime;
   });
 
   return unique.slice(0, 20);
