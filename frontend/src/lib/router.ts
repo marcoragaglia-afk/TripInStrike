@@ -253,12 +253,16 @@ export function findItineraries(
       });
     } else if (stops.length > 0) {
       // Treno AV o regionale con fermate validate: cerca salita/discesa nel percorso.
-      // Per i regionali costruisce lista estesa includendo origine e destinazione
-      // come fermate virtuali (così funziona Rimini→Bologna su un treno Ancona→Bologna).
-      const fullStops: TrainStop[] = train.table_type === 'tabella_a' ? stops : [
-        { train_number: train.train_number, station: train.origin,      sequence: -1,   arrival: '',                departure: train.dep_time! },
+      // Per TUTTI i treni costruisce lista estesa includendo origine e destinazione
+      // come fermate virtuali, così funziona anche con stops incomplete
+      // (es. 8803 Milano-Bari ha solo Ancona/Civitanova/Pescara nelle stops, ma Bari è dest).
+      // Evitiamo duplicati se l'origine o destinazione sono già presenti nelle stops.
+      const hasOriginInStops = stops.some(s => stationMatch(s.station, train.origin));
+      const hasDestInStops = stops.some(s => stationMatch(s.station, train.destination));
+      const fullStops: TrainStop[] = [
+        ...(hasOriginInStops ? [] : [{ train_number: train.train_number, station: train.origin,      sequence: -1,   arrival: '',                departure: train.dep_time! }]),
         ...stops,
-        { train_number: train.train_number, station: train.destination, sequence: 9999, arrival: train.arr_time || '', departure: '' },
+        ...(hasDestInStops ? [] : [{ train_number: train.train_number, station: train.destination, sequence: 9999, arrival: train.arr_time || '', departure: '' }]),
       ];
       const leg = findStopLeg(fullStops, from, to);
       if (!leg) continue;
@@ -286,9 +290,13 @@ export function findItineraries(
   // TrainA: origin ≈ from O passa per 'from' (fermata intermedia), arriva alla stazione di cambio.
   // TrainB: parte dalla stazione di cambio, destination ≈ to (o fermata intermedia).
   if (maxChanges >= 1) {
-    // trainA candidates: origine = from OPPURE 'from' è una fermata intermedia
+    // trainA candidates: origine = from OPPURE 'from' è una fermata intermedia.
+    // CRUCIAL: escludiamo treni la cui DESTINAZIONE è 'from' — quei treni
+    // ARRIVANO al nostro punto di partenza, non possono portarci altrove.
+    // Es: regionale Rimini→Ancona, non è valido come trainA per partire da Ancona.
     const trainsFromOrigin = trains.filter(t => {
       if (!t.dep_time) return false;
+      if (stationMatch(t.destination, from)) return false; // treno che ARRIVA a 'from'
       if (stationMatch(t.origin, from)) {
         return parseTime(t.dep_time) >= minDep;
       }
@@ -296,17 +304,24 @@ export function findItineraries(
       const stops = stopsCache.get(t.train_number) || [];
       const fromStop = stops.find(s => stationMatch(s.station, from));
       if (!fromStop) return false;
+      // Verifica anche che 'from' NON sia l'ultima fermata (altrimenti il treno
+      // finisce qui e non porta altrove)
+      const fromIdx = stops.indexOf(fromStop);
+      if (fromIdx === stops.length - 1) return false;
       const boardT = fromStop.departure || fromStop.arrival;
       return !!boardT && parseTime(boardT) >= minDep;
     });
 
-    // trainB: destinazione ≈ to  OPPURE  treno con fermata 'to' nel percorso
-    const trainsToDestination = trains.filter(t =>
-      t.dep_time && (
+    // trainB: destinazione ≈ to  OPPURE  treno con fermata 'to' nel percorso.
+    // Escludiamo treni la cui ORIGINE è 'to' (treni che PARTONO dalla destinazione).
+    const trainsToDestination = trains.filter(t => {
+      if (!t.dep_time) return false;
+      if (stationMatch(t.origin, to)) return false; // treno che PARTE da 'to'
+      return (
         stationMatch(t.destination, to) ||
         (stopsCache.get(t.train_number) || []).some(s => stationMatch(s.station, to))
-      ),
-    );
+      );
+    });
 
     for (const trainA of trainsFromOrigin) {
       const stopsA = stopsCache.get(trainA.train_number) || [];
@@ -340,8 +355,11 @@ export function findItineraries(
         }
       }
       // Destinazione finale come ULTIMO punto di cambio possibile
+      // (a meno che la destinazione coincida col punto di partenza 'from' — caso assurdo)
       const finalArr = trainA.arr_time || lookupArrTime(stopsA, trainA.destination);
-      if (finalArr && !changePoints.some(c => stationMatch(c.station, trainA.destination))) {
+      if (finalArr &&
+          !stationMatch(trainA.destination, from) &&
+          !changePoints.some(c => stationMatch(c.station, trainA.destination))) {
         changePoints.push({ station: trainA.destination, arrTime: finalArr });
       }
 
