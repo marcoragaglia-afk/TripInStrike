@@ -84,8 +84,22 @@ function normalizeStation(s: string): string {
     .trim();
 }
 
-// Prefissi troppo generici per il fallback città (evita falsi positivi)
-const GENERIC_CITY_PREFIXES = new Set(['SAN', 'SANTA', 'SANTO', 'PORTO', 'TORRE', 'VILLA', 'CAPO', 'SAN ']);
+// Prefissi troppo generici per il fallback città (evita falsi positivi).
+// REGGIO è ambiguo (Emilia vs Calabria). MONTE / CASTEL / CAMPO / COLLE iniziano
+// molti toponimi italiani diversi tra loro.
+const GENERIC_CITY_PREFIXES = new Set([
+  'SAN', 'SANTA', 'SANTO', 'SS',
+  'PORTO', 'TORRE', 'VILLA', 'CAPO',
+  'REGGIO',
+  'MONTE', 'MONTI',
+  'CASTEL', 'CASTELLO',
+  'CAMPO',
+  'COLLE',
+  'BORGO',
+  'CAVA',
+  'PIEVE',
+  'ROCCA',
+]);
 
 /**
  * Matching per prefisso di parola (word-prefix).

@@ -119,6 +119,10 @@ function InfoBanner() {
 function ResultsSection({ data }: { data: JourneyResponse }) {
   const { query, count, itineraries, meta } = data;
 
+  // Separa diretti (0 cambi) da quelli con cambio (>=1 cambio)
+  const direct = itineraries.filter(it => it.changes === 0);
+  const withChange = itineraries.filter(it => it.changes >= 1);
+
   return (
     <div className="space-y-4">
       {/* Header risultati */}
@@ -156,12 +160,51 @@ function ResultsSection({ data }: { data: JourneyResponse }) {
         </div>
       )}
 
-      {/* Itinerari */}
-      <div className="space-y-4">
-        {itineraries.map((it, i) => (
-          <ItineraryCard key={i} itinerary={it} index={i} />
-        ))}
-      </div>
+      {/* Soluzioni dirette */}
+      {direct.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 pt-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-900/30 border border-green-500/30">
+              <span className="text-green-400 text-sm">●</span>
+              <h3 className="text-sm font-bold text-green-300 uppercase tracking-wider">
+                Soluzioni dirette
+              </h3>
+              <span className="text-xs text-green-400/70 ml-1">
+                ({direct.length})
+              </span>
+            </div>
+            <div className="flex-1 h-px bg-green-500/20" />
+          </div>
+          <div className="space-y-4">
+            {direct.map((it, i) => (
+              <ItineraryCard key={`d-${i}`} itinerary={it} index={i} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Soluzioni con cambio */}
+      {withChange.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 pt-4">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-900/30 border border-amber-500/30">
+              <span className="text-amber-400 text-sm">⇄</span>
+              <h3 className="text-sm font-bold text-amber-300 uppercase tracking-wider">
+                Soluzioni con cambio
+              </h3>
+              <span className="text-xs text-amber-400/70 ml-1">
+                ({withChange.length})
+              </span>
+            </div>
+            <div className="flex-1 h-px bg-amber-500/20" />
+          </div>
+          <div className="space-y-4">
+            {withChange.map((it, i) => (
+              <ItineraryCard key={`c-${i}`} itinerary={it} index={direct.length + i} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
